@@ -31,6 +31,7 @@ def plot_xy(x, y, x_label, y_label, title, plot_switch=1, y_is_log=0):
         ax.legend(lns, labs, loc=0)
         plt.show()
 
+
 def plot_xyy(x, y1, y2, x_label, y1_label, y2_label, title, plot_switch=1, y1_is_log=0, y2_is_log=0):
     if plot_switch == 1:
         plt.rcParams['font.sans-serif'] = ['Times New Roman']
@@ -57,6 +58,7 @@ def plot_xyy(x, y1, y2, x_label, y1_label, y2_label, title, plot_switch=1, y1_is
 
         ax.legend(lns, labs, loc=0)
         plt.show()
+
 
 def plot_xyy_breakdown(x, y1, y2, x_label, y1_label, y2_label, title, plot_switch=1, y1_is_log=0, y2_is_log=0):
     if plot_switch == 1:
@@ -87,6 +89,7 @@ def plot_xyy_breakdown(x, y1, y2, x_label, y1_label, y2_label, title, plot_switc
         ax.legend(lns, labs, loc=0)
         plt.show()
 
+
 def transfer_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
     
 
@@ -109,7 +112,6 @@ def transfer_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
         # df1['Ngm'] = derivative(df1[' IDRAIN'], df1[' Vgate'])
 
         plot_xyy(x=df1[' Vgate'],y1=df1['NId'],y2=df1[' gm'],x_label="Gate Voltage (V)",y1_label="Drain Current (mA/mm)",y2_label='Transconductance (mS/mm)',title=title,plot_switch=plot_switch)
-
 
     elif instrument  == '4200':
         ret = re.search('Trans', address)
@@ -143,16 +145,16 @@ def transfer_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
         plot_xyy(x=df1['GateV'],y1=df1['NId'],y2=df1['Ngm'],x_label="Gate Voltage (V)",y1_label="Drain Current (mA/mm)",y2_label='Transconductance (mS/mm)',title=title,plot_switch=plot_switch)
         
 
-
 def output_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
     
-    ret = re.search('Output', address)
-    if ret is None:
-        return None
-    filename = address.split('\\')[-1].split('.')[0]
-    title = filename[filename.find('HGJ'):filename.rfind('(')]
-    
+
     if instrument == '1500':
+        ret = re.search('Output', address)
+        if ret is None:
+            return None
+        filename = address.split('\\')[-1].split('.')[0]
+        title = filename[filename.find('HGJ'):filename.rfind('(')]
+
         pd_reader = pd.read_csv(address, sep=',',header=header-2).drop(columns=['DataName'])
         df1 = pd.DataFrame()
         df1 = pd_reader
@@ -165,16 +167,44 @@ def output_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
 
         print(df1)
         plot_xy(x=df1[' Vdrain'],y=df1['NId'],x_label="Gate Voltage (V)",y_label="Drain Current (mA/mm)",title=title,plot_switch=plot_switch)
+    # TO DO 
+    elif instrument  == '4200':
+        ret = re.search('Output', address)
+        if ret is None:
+            return None
+
+        title = ' '.join(address.split('\\')[-4:-1]) + ' ' + address.split('\\')[-1].split('.')[0]
+        # .split('.')[0]
+        # title = filename[filename.find('HGJ'):filename.rfind('(')]
+
+        pd_reader = pd.read_excel(address,sheet_name=0,header=header)
+        df1 = pd.DataFrame()
+        df1 = pd_reader
+        # 读取列名，并抛弃不需要的数据
+        list1 = pd_reader.columns.tolist()
+        for x in list1:
+            if x in ['DrainI', 'DrainV', 'GateI', 'GateV', 'GM']:
+                continue
+            df1 = df1.drop(columns=[x])
+        # 设置字符串为NaN
+        df1['GM'] = pd.to_numeric(df1['GM'], errors='coerce')
+        # print(df1['GM'])
+        df1['NId'] = df1['DrainI'] * 1e6 / true_gate_width
+        df1['NIg'] = np.abs(df1['GateI'] * 1e6 / true_gate_width)
+        df1['Ngm'] = df1['GM'] * 1e6 / true_gate_width
+        # print(df1)
+        plot_xyy(x=df1['GateV'],y1=df1['NId'],y2=df1['Ngm'],x_label="Gate Voltage (V)",y1_label="Drain Current (mA/mm)",y2_label='Transconductance (mS/mm)',title=title,plot_switch=plot_switch)
 
 def Schottky_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
     
-    ret = re.search('Schottky', address)
-    if ret is None:
-        return None
-    filename = address.split('\\')[-1].split('.')[0]
-    title = filename[filename.find('HGJ'):filename.rfind('(')]
-    
+  
     if instrument == '1500':
+        ret = re.search('Schottky', address)
+        if ret is None:
+            return None
+        filename = address.split('\\')[-1].split('.')[0]
+        title = filename[filename.find('HGJ'):filename.rfind('(')]
+        
         pd_reader = pd.read_csv(address, sep=',',header=header-2).drop(columns=['DataName'])
         df1 = pd.DataFrame()
         df1 = pd_reader
@@ -184,19 +214,42 @@ def Schottky_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
                 continue
             df1 = df1.drop(columns=[x])
         df1['NIg'] = np.abs(df1[' IGATE'] * 1e6 / true_gate_width)
-
-        print(df1)
+        # print(df1)
         plot_xy(x=df1[' Vgate'],y=df1['NIg'],x_label="Gate Voltage (V)",y_label="Gate Current (mA/mm)",title=title,plot_switch=plot_switch,y_is_log=1)
+
+    elif instrument  == '4200':
+        ret = re.search('Igs', address)
+        if ret is None:
+            return None
+
+        title = ' '.join(address.split('\\')[-4:-1]) + ' ' + address.split('\\')[-1].split('.')[0]
+        # .split('.')[0]
+        # title = filename[filename.find('HGJ'):filename.rfind('(')]
+
+        pd_reader = pd.read_excel(address,sheet_name=0,header=header)
+        df1 = pd.DataFrame()
+        df1 = pd_reader
+        # 读取列名，并抛弃不需要的数据
+        list1 = pd_reader.columns.tolist()
+        for x in list1:
+            if x in ['GateI', 'GateV']:
+                continue
+            df1 = df1.drop(columns=[x])
+        df1['NIg'] = np.abs(df1['GateI'] * 1e6 / true_gate_width)
+        print(df1)
+        plot_xy(x=df1['GateV'],y=df1['NIg'],x_label="Gate Voltage (V)",y_label="Gate Current (mA/mm)",title=title,plot_switch=plot_switch,y_is_log=1)
+
 
 def breakdown_plot(address, header, instrument, true_gate_width, plot_switch=1 ):
     
-    ret = re.search('Breakdown', address)
-    if ret is None:
-        return None
-    filename = address.split('\\')[-1].split('.')[0]
-    title = filename[filename.find('HGJ'):filename.rfind('(')]
-    
+
     if instrument == '1500':
+        ret = re.search('Breakdown', address)
+        if ret is None:
+            return None
+        filename = address.split('\\')[-1].split('.')[0]
+        title = filename[filename.find('HGJ'):filename.rfind('(')]
+    
         pd_reader = pd.read_csv(address, sep=',',header=header-2).drop(columns=['DataName'])
         df1 = pd.DataFrame()
         df1 = pd_reader
@@ -207,12 +260,38 @@ def breakdown_plot(address, header, instrument, true_gate_width, plot_switch=1 )
             df1 = df1.drop(columns=[x])
         df1['NId'] = df1[' IDRAIN'] * 1e6 / true_gate_width
         df1['NIg'] = np.abs(df1[' IGATE'] * 1e6 / true_gate_width)
-        print(df1)
+        # print(df1)
         plot_xyy_breakdown(x=df1[' Vdrian'],y1=df1['NId'],y2=df1['NIg'],x_label="Drain Voltage (V)",y1_label="Drain Current (mA/mm)",y2_label='Gate Current (mA/mm)',title=title,plot_switch=plot_switch,y1_is_log=1,y2_is_log=1)
+
+    elif instrument  == '4200':
+        ret = re.search('BR', address)
+        if ret is None:
+            return None
+
+        title = ' '.join(address.split('\\')[-4:-1]) + ' ' + address.split('\\')[-1].split('.')[0]
+        # .split('.')[0]
+        # title = filename[filename.find('HGJ'):filename.rfind('(')]
+
+        pd_reader = pd.read_excel(address,sheet_name=0,header=header)
+        df1 = pd.DataFrame()
+        df1 = pd_reader
+        # 读取列名，并抛弃不需要的数据
+        list1 = pd_reader.columns.tolist()
+        for x in list1:
+            if x in ['DrainI', 'DrainV', 'SourceI', 'SourceV', 'GateI', 'GateV']:
+                continue
+            df1 = df1.drop(columns=[x])
+        df1['NId'] = df1['DrainI'] * 1e6 / true_gate_width
+        df1['NIg'] = np.abs(df1['GateI'] * 1e6 / true_gate_width)
+        # print(df1)
+        plot_xyy_breakdown(x=df1['DrainV'],y1=df1['NId'],y2=df1['NIg'],x_label="Drain Voltage (V)",y1_label="Drain Current (mA/mm)",y2_label='Gate Current (mA/mm)',title=title,plot_switch=plot_switch,y1_is_log=1,y2_is_log=1)
+
+
+
     # # output csv extension
     # if write_csv_switch == 1:
     #     preaddress, ext = os.path.splitext(address)
     #     address_output = os.path.normpath(preaddress+".csv")
     #     pd_reader.to_csv(address_output)
 
-# transfer_plot(address=r'C:\Users\rikka\Desktop\Workshop\data\SM1361A_20210601\DC\4\Trans-50um_single_6V_1#1.xls', header=0, instrument='4200', true_gate_width=50)
+Schottky_plot(address=r'C:\Users\rikka\Desktop\Workshop\data\SM1361A_20210604\5\OC\Igs_HGJ281_M1_100U-3U-1#1.xls', header=0, instrument='4200', true_gate_width=50)
